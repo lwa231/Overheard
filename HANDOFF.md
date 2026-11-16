@@ -74,8 +74,11 @@ D1 guard hard-coded and hidden. D2 slowdown toggle. D3 ad-stream DPI parked in `
 - Hard guardrails: agents never hold payment methods or funds; every spend, purchase, upgrade, public/outbound action and tax/legal/platform-terms matter needs the user's per-action approval; agents cannot change their own limits, schedules, incentives or instruction files; no evading usage limits; revenue claims need evidence and audit; log every revenue and spend event.
 - Local models: no GPU yet, so CPU-only small models; real workers arrive with a GPU (RTX 3060 12 GB researched, or a flashed Radeon Instinct MI25). See `docs/planning/local-models.md`, `usage-estimate.md`.
 
+## 8b. R18 (2026-11-16): configurable board address
+`unoq-netmon.r18/` is a copy of r17 where ONLY the board's address changed: it is no longer hard-coded. One file, `board.conf` (BOARD_USER, BOARD_HOST, BOARD_MDNS, SITE), is read by every `.command`, `scripts/*.sh`, the Makefile and `tools/make_profile.py` through `scripts/board.sh`. Several boards: one file per site in `sites/<name>.conf` (`sites/apartment.conf` is today's board, `sites/home.conf.example` is the template) chosen with `SITE=<name>`. Per run: `BOARD_HOST=<address> bash scripts/status.sh`. `launcher/Overheard-launcher.sh` is a Mac launcher that follows the same file. Default is unchanged (the apartment board). New tests: `tests/test_r18_board.py`; full suite 262 pass, the same one browser test still fails as in r17. Plan for two sites (home with the user's own router/modem, apartment, data shared over Tailscale, maybe via the VPS) is `unoq-netmon.r18/docs/multi-site.md`; nothing runs between sites yet. Not run on a real board.
+
 ## 9. Repo map
-- repo root = Overheard r17 (current): `src/overheard/`, `web/` (inside src), `tests/`, `scripts/`, `led/`, `tools/`, `design/`, `branding/`, `dist/` (packaged app and show images), `docs/`, `experimental/`, `*.command` launchers, `Makefile`, `pyproject.toml`, `UI-CHECKLIST.md`.
+- `unoq-netmon.r18/` = newest build (r17 + configurable board address). Repo root = Overheard r17: `src/overheard/`, `web/` (inside src), `tests/`, `scripts/`, `led/`, `tools/`, `design/`, `branding/`, `dist/` (packaged app and show images), `docs/`, `experimental/`, `*.command` launchers, `Makefile`, `pyproject.toml`, `UI-CHECKLIST.md`.
 - `archive/unoq-netmon.old` (original, untouched), `.r15`, `.r16`, `.r17-design`, `archive/gemini/` (Gemini/AntiGravity handoff, 3DS plan and patch scripts).
 - `agency/` agency code v0.2. `launcher/Overheard.app` Mac launcher. `docs/planning/` all planning docs and the earlier handoffs.
 - Not in the repo: access key, unlock secret, `last-*.txt` result files, the user's personal notes (`trading-bot-ideas.md`, `reel-queue.md`, an unrelated handoff), the `.tgz` packages (duplicates of the folders), and the VPS script repo (`lwa231/AWL_Overheard_VPSVPN`, private).
@@ -86,6 +89,7 @@ D1 guard hard-coded and hidden. D2 slowdown toggle. D3 ad-stream DPI parked in `
 - Never tested on hardware: `/3ds` on a real console; Apple profile; Android; DoT served by the board; Gate; VPS firewall; Linux and Windows DNS commands.
 
 ## 11. Open questions and next steps
+0. Move to r18 on the laptop (`overheard-r18.tgz` or `unoq-netmon.r18/`), run `Check Overheard.command` from it, then retire r17 on the laptop only on his "clean up".
 1. Fix the failing browser test; confirm r17 UI against `UI-CHECKLIST.md`.
 2. VPS: `docker ps`, SSH over Tailscale, `sudo bash vps/harden.sh` (type `YES`), reboot, non-root user.
 3. Set the Tailscale global nameserver to the board; decide fallback behaviour if the board is down.

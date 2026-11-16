@@ -1,0 +1,5 @@
+# Copy to sites/home.conf and fill in the home board's address (its Tailscale address works from anywhere).
+# Then:  SITE=home bash scripts/status.sh
+BOARD_USER=arduino
+BOARD_HOST=CHANGE-ME
+BOARD_MDNS=
