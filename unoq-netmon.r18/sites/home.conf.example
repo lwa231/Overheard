@@ -3,3 +3,9 @@
 BOARD_USER=arduino
 BOARD_HOST=CHANGE-ME
 BOARD_MDNS=
+# Optional: a fixed address on this site's router Wi-Fi, set by "Set Board Address.command" (needs NetworkManager on the board).
+# Use the board's TAILSCALE address (tailscale ip -4 on the board) as BOARD_HOST above, not its LAN address.
+#BOARD_LAN_IP=192.0.2.2/24
+#BOARD_LAN_GW=192.0.2.1
+# When BOARD_LAN_IP is set, scripts/install.sh also starts the service with --expect-ip: it logs the board's addresses at start and
+# waits up to 30 s for that one (Wi-Fi can come up late), but always starts.

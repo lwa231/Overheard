@@ -55,6 +55,13 @@ if [ "${NO_TLS:-}" = "1" ]; then
   EXTRA="$EXTRA --no-tls"
   echo "NO_TLS=1: upstream lookups will go out unencrypted."
 fi
+# Optional site key BOARD_LAN_IP (CIDR): the service logs that address at start and waits up to 30 s for it, but always starts.
+# A malformed value is NOT passed on (a flag the service rejects would crash-loop it): warn and install without --expect-ip.
+if [ -n "${BOARD_LAN_IP:-}" ]; then
+  . "$(dirname "${BASH_SOURCE[0]}")/lan.sh"
+  if lan_cidr_ok "$BOARD_LAN_IP"; then EXTRA="$EXTRA --expect-ip ${BOARD_LAN_IP%/*}"
+  else echo "WARNING: BOARD_LAN_IP='$BOARD_LAN_IP' is not a valid address like 10.10.50.2/24: installing WITHOUT --expect-ip."; fi
+fi
 echo "Board sees this Mac as: ${MAC:-unknown}"
 printf '%s\n' "$RESULT" | sed -n 's/^added=\(.*\)/Added automatically (outside the default ranges): \1/p'
 echo "Allowed to use the DNS server: private and Tailscale ranges${FINAL:+ plus $FINAL}"
@@ -65,6 +72,7 @@ cat > /etc/systemd/system/overheard.service <<UNIT
 Description=Overheard DNS filter and network monitor
 After=network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=0
 
 [Service]
 User=arduino
@@ -73,7 +81,7 @@ Environment=PYTHONPATH=/home/arduino/netmon
 ExecStart=/usr/bin/python3 -m overheard --dns --bind 0.0.0.0 --data-dir /home/arduino/netmon/data --profile-all'"$EXTRA"'
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 Restart=always
-RestartSec=3
+RestartSec=2
 
 [Install]
 WantedBy=multi-user.target

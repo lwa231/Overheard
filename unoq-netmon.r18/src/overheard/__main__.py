@@ -1,12 +1,14 @@
 """Entry point: python3 -m overheard [--dns] [--demo]"""
 import errno
 import os
+import re
 import signal
+import subprocess
 import sys
 import threading
 import time
 
-from . import auth, config, demo, led as ledmod, sampler, sysinfo
+from . import auth, config, demo, led as ledmod, peers as peersmod, sampler, sysinfo
 from .adult import AdultFilter, FlagLog, Guard, PenaltyBox
 from .blocklist import Blocklist
 from .dnsserver import DnsServer
@@ -15,6 +17,34 @@ from .server import App, serve
 from .settings import Settings
 from .state import State
 from .upstream import Forwarder
+
+
+def local_ipv4s():
+    """The board's IPv4 addresses from `ip -4 -o addr`; None when `ip` is missing or fails (stdlib only, no netifaces)."""
+    try:
+        r = subprocess.run(["ip", "-4", "-o", "addr"], capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return re.findall(r"\binet (\d+\.\d+\.\d+\.\d+)/", r.stdout) if r.returncode == 0 else None
+
+
+def check_expected_ip(want, lister=local_ipv4s, clock=time.monotonic, sleep=time.sleep, wait_s=30.0):
+    """Log the board's addresses and whether `want` is among them. If not, warn and wait up to wait_s for it (Wi-Fi may come up late).
+    Never refuses to start: DNS over Tailscale has to survive a LAN problem. Returns True when the address was present."""
+    t0 = clock()
+    while True:
+        have = lister()
+        if have is None:
+            print("expect-ip: cannot list addresses (no `ip` command); not checking %s" % want, flush=True)
+            return False
+        if want in have:
+            print("expect-ip: %s is present (addresses: %s)" % (want, ", ".join(have)), flush=True)
+            return True
+        if clock() - t0 >= wait_s:
+            break
+        sleep(1)
+    print("WARNING expect-ip: %s is NOT on this board (addresses: %s); starting anyway on all addresses" % (want, ", ".join(have) or "none"), file=sys.stderr, flush=True)
+    return False
 
 
 def main(argv=None):
@@ -47,6 +77,8 @@ def main(argv=None):
             guard.flags.save()
     threading.Thread(target=save_flags, daemon=True).start()
     print("adult guard: %d listed domains, %ds slowdown after the last adult lookup" % (len(guard.filter), cfg.penalty_s))
+    if cfg.expect_ip:
+        check_expected_ip(cfg.expect_ip)
     if cfg.dns:
         err = DnsServer(cfg, state, blocklist, Forwarder(cfg, state.dns), guard).start()
         if err:
@@ -58,8 +90,11 @@ def main(argv=None):
             return 1
         print("dns: listening on %s:%d, upstream %s" % (cfg.bind, cfg.dns_port, "plain UDP" if cfg.no_tls else "encrypted (DoT)"), flush=True)
     sprites = ledmod.load_sprites()
+    peers = peersmod.load(cfg.data_dir)
+    if peers:
+        print("sites: this board is '%s', peers: %s" % (peers.site, ", ".join(x["name"] for x in peers.summary()["sites"][1:])))
     app = App(cfg, state, store if cfg.profiles else None, ledmod.LedState(os.path.join(cfg.data_dir, "led.json"), sprites), sprites,
-              None if cfg.no_auth else auth.load_token(cfg.data_dir), guard, vitals)
+              None if cfg.no_auth else auth.load_token(cfg.data_dir), guard, vitals, peers=peers)
     try:
         httpd = serve(app, cfg.host, cfg.port)
     except OSError as e:

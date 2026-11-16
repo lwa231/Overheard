@@ -1,5 +1,7 @@
 """Runtime configuration. One immutable object, built once from the command line and passed down."""
 import argparse
+import ipaddress
+import sys
 import os
 from dataclasses import dataclass
 
@@ -22,6 +24,10 @@ class Config:
     tls_port: int = 853
     tls_name: str = "cloudflare-dns.com"
     tls_cafile: str | None = None
+    upstream2: str = "9.9.9.9"     # second encrypted upstream, tried before plain UDP ("" = none)
+    tls_port2: int = 853
+    tls_name2: str = "dns.quad9.net"
+    expect_ip: str = ""            # board address that should exist at start (logged and waited for, never required)
     demo: bool = False
     data_dir: str = os.path.expanduser("~/.overheard")
     profile_devices: tuple = ()
@@ -43,6 +49,17 @@ class Config:
         return os.path.join(self.data_dir, "profiles.db")
 
 
+def _ipv4(text):
+    """--expect-ip only logs and waits, so a bad value must never stop the service (Restart=always would loop on it): warn, treat as absent."""
+    try:
+        ipaddress.IPv4Address(text)
+    except ValueError:
+        if text:
+            print("overheard: ignoring --expect-ip %r (not an IPv4 address like 10.10.50.2); starting normally" % text, file=sys.stderr)
+        return ""
+    return text
+
+
 def parse(argv=None) -> Config:
     ap = argparse.ArgumentParser(prog="overheard", description=__doc__)
     ap.add_argument("--port", type=int, default=8080)
@@ -59,6 +76,10 @@ def parse(argv=None) -> Config:
     ap.add_argument("--tls-port", type=int, default=853)
     ap.add_argument("--tls-name", default="cloudflare-dns.com")
     ap.add_argument("--tls-cafile", default=None)
+    ap.add_argument("--upstream2", default=None, help="second DoT upstream, tried when the first fails; default 9.9.9.9 only while --upstream is the built-in default; '' disables")
+    ap.add_argument("--tls-port2", type=int, default=853)
+    ap.add_argument("--tls-name2", default="dns.quad9.net")
+    ap.add_argument("--expect-ip", default="", type=_ipv4, help="log a warning (and wait up to 30 s) if the board does not have this IPv4 address at start")
     ap.add_argument("--demo", action="store_true", help="scripted fake traffic")
     ap.add_argument("--data-dir", default=os.path.expanduser("~/.overheard"))
     ap.add_argument("--profile", default="", help="comma separated device IPs to profile (opt-in)")
@@ -75,7 +96,8 @@ def parse(argv=None) -> Config:
     return Config(port=a.port, host=a.host, dns=a.dns, dns_port=a.dns_port, bind=a.bind,
                   upstream=a.upstream, upstream_port=a.upstream_port, ttl=a.ttl, update_blocklist=a.update_blocklist,
                   no_tls=a.no_tls, strict=a.strict, tls_port=a.tls_port, tls_name=a.tls_name,
-                  tls_cafile=a.tls_cafile, demo=a.demo, data_dir=a.data_dir,
+                  tls_cafile=a.tls_cafile, upstream2=a.upstream2 if a.upstream2 is not None else (Config.upstream2 if a.upstream == Config.upstream else ""), tls_port2=a.tls_port2, tls_name2=a.tls_name2,
+                  expect_ip=a.expect_ip, demo=a.demo, data_dir=a.data_dir,
                   profile_devices=tuple(x.strip() for x in a.profile.split(",") if x.strip()),
                   profile_all=a.profile_all or a.demo, profiles=not a.no_profiles,
                   no_auth=a.no_auth, rate=a.rate,

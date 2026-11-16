@@ -319,6 +319,8 @@ body:not(.unl) .main2{grid-template-columns:minmax(0,1fr)}
   .hero{font-size:22px}.brandbtn b{font-size:18px}
   .meter{grid-template-columns:54px 1fr auto}
 }
+/* sites: pills to look at other boards, shown only when /api/sites lists more than this board */
+.sites{display:flex;flex-wrap:wrap;gap:8px}
 </style>
 </head>
 <body data-state="locked">
@@ -353,6 +355,8 @@ body:not(.unl) .main2{grid-template-columns:minmax(0,1fr)}
     <button class="btn" id="lockBtn" type="button" aria-label="Log in" title="Log in (P)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path id="lkI" d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span id="lkT">Log in</span></button>
   </div>
 </header>
+<nav class="sites" id="sites" aria-label="Boards" hidden></nav>
+<div class="pmsg" id="siteBan" role="status" hidden></div>
 
 <section class="panel mapP" aria-labelledby="mapT">
   <div class="ph"><h2 id="mapT">Network map</h2><div class="mapacts"><span class="tag" id="mapTag">0 devices seen</span><span class="tag">Drag or arrow keys to rotate</span><button class="btn" id="mapReset" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 3-6.2M4 4v4h4"/></svg>Reset view</button></div></div>
@@ -607,7 +611,7 @@ async function login(e){
   }catch(err){lmsg('Couldn’t reach the board. Check the connection and try again.')}
   $('devGo').disabled=false}
 async function lock(){try{await fetch('/api/lock',{method:'POST',headers:JH,credentials:'same-origin',body:'{}'})}catch(e){}await load()}
-function toggleAccess(){if(UNL)lock();else if($('devSheet').hidden)openLogin();else closeLogin()}
+function toggleAccess(){if(SITE)return;if(UNL)lock();else if($('devSheet').hidden)openLogin();else closeLogin()}
 $('brandTitle').onclick=$('lockBtn').onclick=toggleAccess;
 $('devForm').onsubmit=login;
 $('devX').onclick=$('devCancel').onclick=closeLogin;
@@ -661,7 +665,7 @@ function render(s){
   else if(up==='plain'||up==='mixed'){lk.hidden=false;lk.className='tag warn';lk.firstChild.textContent='⚠';$('lockT').textContent='Not encrypted';lk.title='Some lookups leave this board without encryption.'}
   else lk.hidden=true;
   showSlowed(u&&s.settings&&s.settings.slowdown?s.adult:null);
-  showRefused(s.refused);
+  showRefused(SITE?[]:s.refused);
   if(u&&s.settings&&!swBusy)$('slowSw').checked=!!s.settings.slowdown;
   /* counters */
   const tot=dns.total||0,bl=dns.blocked||0;
@@ -1188,12 +1192,28 @@ $('fsheet').addEventListener('mousedown',e=>{if(e.target===$('fsheet'))$('fsheet
 $('fcopy').onclick=async()=>{try{await navigator.clipboard.writeText((window.FLAGS||[]).map(i=>i.domain).join('\n'));$('fcopy').textContent='Copied'}catch(e){$('fcopy').textContent='Copy failed'}setTimeout(()=>$('fcopy').textContent='Copy list',1500)};
 
 /* ---------- poll ---------- */
-async function load(){const my=++seq;let d=null;
-  try{const r=await fetch('/api/stats',{signal:AbortSignal.timeout(4000),credentials:'same-origin'});if(!r.ok)throw r.status;d=await r.json()}
-  catch(e){if(my===seq){const st=$('status');st.className='tag bad';st.firstChild.textContent='✕';$('statusT').textContent='Lost contact with the board'}}
-  if(d&&my===seq)render(d)}
+/* sites: another board's locked summary, read-only; the server never sends names, and the page never offers unlock or settings for it */
+let SITE=null,SITES=[];
+const BLANK={unlocked:false,host:'',demo:false,uptime:0,t0:0,step:5,dns:{},adult:null,now:{},devices:[],rx:0,tx:0,recent:[],conns:[],refused:[],net:{},sys:{}};
+function siteView(){
+  const ban=$('siteBan');ban.hidden=!SITE;if(SITE)ban.textContent='Viewing '+SITE+' (summary only, unlock on that board for detail)';
+  ['lockBtn','ledBtn'].forEach(i=>{$(i).hidden=!!SITE})}
+function drawSites(){
+  const nav=$('sites');nav.hidden=SITES.length<2;nav.textContent='';if(nav.hidden)return;
+  SITES.forEach(x=>{const b=document.createElement('button'),l=document.createElement('span');
+    b.type='button';b.className='btn chip';b.dataset.s=x.self?'':x.name;b.setAttribute('aria-pressed',String(x.self?!SITE:x.name===SITE));
+    l.className='lamp';b.append(l,x.name+(x.ok===false?' (offline)':''));nav.append(b)})}
+async function loadSites(){
+  try{const r=await fetch('/api/sites',{signal:AbortSignal.timeout(4000),credentials:'same-origin'});if(!r.ok)throw r.status;SITES=(await r.json()).sites||[]}catch(e){return}
+  if(SITE&&!SITES.some(x=>x.name===SITE&&!x.self)){SITE=null;siteView()}
+  drawSites()}
+$('sites').onclick=e=>{const b=e.target.closest('button');if(!b)return;SITE=b.dataset.s||null;siteView();drawSites();if(SITE)render(BLANK);load()};
+async function load(){const my=++seq,site=SITE;let d=null;
+  try{const r=await fetch(site?'/api/site?name='+encodeURIComponent(site):'/api/stats',{signal:AbortSignal.timeout(4000),credentials:'same-origin'});if(!r.ok)throw r.status;d=await r.json()}
+  catch(e){if(my===seq){if(site)render(BLANK);const st=$('status');st.className='tag bad';st.firstChild.textContent='✕';$('statusT').textContent=site?site+' is offline':'Lost contact with the board';if(site)$('siteBan').textContent=site+' is offline'}}
+  if(d&&my===seq){render(d);if(site)siteView()}}
 function tick(){load().finally(()=>setTimeout(tick,1000))}
-theme();syncLook();tick();
+theme();syncLook();tick();loadSites();setInterval(loadSites,15000);
 </script>
 </body>
 </html>

@@ -450,12 +450,12 @@ def test_compare_is_constant_time_primitive():
 # ---------- 5. adult guard cannot be altered ----------
 def test_no_env_var_flag_or_setting_reaches_the_adult_guard():
     assert not [f for f in glob.glob(SRC + "/*.py") if re.search(r"os\.environ|getenv|environb", open(f).read())]      # no env var is read anywhere
-    flags = " ".join(a for a in re.findall(r'add_argument\("(--[a-z-]+)"', open(os.path.join(SRC, "config.py")).read()))
+    flags = " ".join(a for a in re.findall(r'add_argument\("(--[a-z0-9-]+)"', open(os.path.join(SRC, "config.py")).read()))
     assert not re.search(r"adult|guard|penalt|safe|slow|filter|nsfw|unblock|allow-?adult", flags), flags
     # the only argv names that exist today; a new flag must be added here on purpose
     assert set(flags.split()) <= {"--port", "--host", "--dns", "--dns-port", "--bind", "--upstream", "--upstream-port", "--ttl", "--update-blocklist", "--no-tls", "--strict",
                                   "--tls-port", "--tls-name", "--tls-cafile", "--demo", "--data-dir", "--profile", "--profile-all", "--no-profiles", "--no-auth", "--allow",
-                                  "--allow-extra", "--rate", "--profile-max-mb", "--export-profiles", "--purge-profiles"}
+                                  "--allow-extra", "--rate", "--profile-max-mb", "--export-profiles", "--purge-profiles", "--expect-ip", "--upstream2", "--tls-port2", "--tls-name2"}
     assert srvmod.SETTINGS == {"slowdown"}
     from overheard import settings
     assert not [a for a in vars(settings.Settings) if re.search("adult|guard|penalt", a)]

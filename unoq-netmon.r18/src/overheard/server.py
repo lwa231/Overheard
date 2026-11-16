@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlparse
 
 from . import auth
 from .config import PKG
+from .peers import Unreachable, default_site
 from .stats import adult_summary, build_stats
 
 
@@ -40,10 +41,11 @@ class Req:
 
 
 class App:
-    def __init__(self, cfg, state, profiles=None, led=None, sprites=None, token=None, guard=None, vitals=None, secret=None):
+    def __init__(self, cfg, state, profiles=None, led=None, sprites=None, token=None, guard=None, vitals=None, secret=None, peers=None):
         self.cfg, self.state, self.profiles, self.led, self.sprites, self.token, self.guard, self.vitals = cfg, state, profiles, led, sprites, token, guard, vitals
         self.secret = secret or auth.load_secret(cfg.data_dir)
         self.sessions, self.fails = auth.Sessions(), auth.FailureLimit()
+        self.peers = peers          # peers.Peers or None: other boards' locked summaries
 
     def _unlock(self, req, body):
         key = req.addr
@@ -97,6 +99,17 @@ class App:
             if unlocked or req.doctor:
                 out["settings"] = {"slowdown": self.state.settings.slowdown}
             return self._json(out)
+        if method == "GET" and p == "/api/sites":
+            return self._json(self.peers.summary() if self.peers else {"site": default_site(), "sites": [{"name": default_site(), "self": True}]})
+        if method == "GET" and p == "/api/site":
+            try:
+                if not self.peers:
+                    raise KeyError
+                return self._json(self.peers.fetch(q.get("name")))
+            except KeyError:
+                return self._json({"error": "not found"}, 404)
+            except Unreachable:
+                return self._json({"error": "site unreachable"}, 502)
         if method == "POST" and p == "/api/unlock":
             return self._unlock(req, body)
         if method == "POST" and p == "/api/lock":

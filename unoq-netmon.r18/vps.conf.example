@@ -1,0 +1,5 @@
+# Copy to vps.conf (git-ignored) and fill in. Used by "Check VPS.command" / scripts/vps_check.sh, run from the Mac.
+# The VPS is only ever reached over SSH with your key; this file holds no password.
+# Use the VPS's Tailscale address or MagicDNS name if SSH works over Tailscale, otherwise its public address.
+VPS_USER=CHANGE-ME
+VPS_HOST=CHANGE-ME
