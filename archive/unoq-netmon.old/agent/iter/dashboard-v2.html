@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Overheard</title>
+<style>
+:root{--paper:#DDE5EC;--well:#CBD6E0;--ink:#0E1A2B;--ink-2:rgba(14,26,43,.62);--rule:rgba(14,26,43,.14);
+ --display:"Avenir Next Condensed","Avenir Next","Helvetica Neue","Arial Narrow",Arial,sans-serif;--text:"Avenir Next","Helvetica Neue",system-ui,sans-serif}
+*{box-sizing:border-box;margin:0}
+body{font-variant-numeric:tabular-nums}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font:400 15px/1.4 var(--text);display:grid;grid-template-columns:minmax(0,1fr) 270px minmax(0,1.25fr);grid-template-rows:100vh;gap:0;overflow:hidden}
+.left{display:grid;grid-template-rows:minmax(0,1fr) minmax(0,44%);min-width:0;min-height:0}
+.hero{padding:22px 28px 0 28px;display:flex;flex-direction:column;min-height:0;min-width:0}
+.brand{display:flex;justify-content:space-between;gap:16px;font-size:14px;color:var(--ink-2);min-width:0}
+.brand b{color:var(--ink);font-weight:600;font-size:15px;flex:none}
+.brand span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+.stage{flex:1;min-height:0;display:flex;align-items:center;overflow:hidden}
+h1{font:800 64px/.88 var(--display);letter-spacing:-.012em;text-wrap:balance;overflow-wrap:break-word;max-width:100%}
+.nb{white-space:nowrap}
+.why{font-size:15px;max-width:44ch;padding-bottom:12px}
+.why small{display:block;margin-top:6px;font-size:13px;color:var(--ink-2)}
+.web{position:relative;min-height:0;border-top:1px solid var(--rule)}
+.mid{border-left:1px solid var(--rule);border-right:1px solid var(--rule);padding:22px 18px 14px;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.mid h2{font:600 14px var(--text);margin-bottom:8px}
+ul{list-style:none;padding:0;font-size:13.5px;overflow:hidden;flex:1;min-height:0}
+li{padding:6px 0;border-top:1px solid var(--rule);height:50px}
+li div:first-child{display:flex;min-width:0;white-space:nowrap}
+li .sub{min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--ink-2)}
+li .reg{flex:none;font-weight:600}
+.mid .tally{font-size:12.5px;color:var(--ink-2);margin:-2px 0 10px}
+.mid .tally b{color:var(--ink);font-weight:600}
+li div:last-child{color:var(--ink-2);font-size:12.5px;display:flex;justify-content:space-between;gap:8px}
+li.x div:first-child{text-decoration:line-through;text-decoration-thickness:1px}
+.right{position:relative;min-width:0;min-height:0}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+@media(max-width:1000px){body{grid-template-columns:1fr;grid-template-rows:none;overflow:auto;height:auto}.left{grid-template-rows:auto 280px}.mid{display:none}.right{height:80vh}}
+</style>
+<section class="left">
+  <div class="hero">
+    <div class="brand"><b>Overheard</b><span id="status">Connecting</span></div>
+    <div class="stage" id="stage"><h1 id="h" role="status" aria-live="polite">&nbsp;</h1></div>
+    <p class="why" id="why"></p>
+  </div>
+  <div class="web"><canvas id="web" aria-label="Devices using this board for DNS"></canvas></div>
+</section>
+<aside class="mid"><h2>Latest lookups</h2><p class="tally" id="tally"></p><ul id="recent"></ul></aside>
+<section class="right"><canvas id="c" aria-label="Ten minutes of lookups per device and service"></canvas></section>
+<script>
+const $=id=>document.getElementById(id);
+const INK='#0E1A2B',INK2='rgba(14,26,43,.62)',WELL='#CBD6E0',PAPER='#DDE5EC',FONT='"Avenir Next","Helvetica Neue",sans-serif';
+const RAMP=[[0,[91,124,255]],[.3,[34,199,221]],[.55,[124,217,87]],[.78,[255,210,63]],[1,[255,75,43]]];
+function heat(v){v=Math.max(0,Math.min(1,v));for(let i=1;i<RAMP.length;i++){if(v<=RAMP[i][0]){const[a,A]=RAMP[i-1],[b,B]=RAMP[i],t=(v-a)/(b-a);return`rgb(${A.map((x,k)=>Math.round(x+(B[k]-x)*t)).join()})`}}return'rgb(255,75,43)'}
+const level=c=>c<=0?0:Math.min(1,Math.log2(1+c)/3.6);
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S=null,hover=null,geo=[];
+const dname=d=>d.id==='this board'?(S.host||'This board'):`${d.label}`;
+const short=ip=>ip==='this board'?'':ip;
+
+function headline(s){
+  const n=s.now,d=s.dns;
+  if(!d.enabled)return['DNS is off.','Start the agent with --dns, then set a device’s DNS server to this board’s address.',''];
+  if(!n.service)return['Quiet.',d.clients?'Nothing worth naming in the last 45 seconds.':'No device is using this board for DNS yet.',''];
+  const grp=new Map();n.evidence.forEach(e=>{const k=reg(e.domain);grp.set(k,(grp.get(k)||0)+e.count)});
+  const ev=[...grp.keys()].slice(0,2).join(' and '),tot=[...grp.values()].reduce((a,b)=>a+b,0);
+  const name=n.service==='Google search'?'Google':n.service;
+  const h={video:`${name}, playing video.`,audio:`${name}, playing audio.`,search:`Searching ${name}.`,browsing:`${name}, browsing.`}[n.mode];
+  return[h,`${tot} lookup${tot===1?'':'s'} of ${ev} in the last ${span(n.window)}.`,'DNS shows which service a device contacts, not what it plays or searches.'];
+}
+function dom(d){const r=reg(d),i=d.length-r.length;return i>0?`<span class=sub>${esc(d.slice(0,i))}</span><span class=reg>${esc(r)}</span>`:`<span class=reg>${esc(d)}</span>`}
+const TWO=new Set(['co.uk','com.au','co.jp','com.br','co.in','com.cn']);
+function reg(d){const p=d.split('.');if(p.length<=2)return d;const t=p.slice(-2).join('.');return TWO.has(t)?p.slice(-3).join('.'):t}
+const span=s=>s>=60?(s/60===1?'minute':`${Math.round(s/60)} minutes`):`${s} seconds`;
+function fitHeadline(){
+  const h=$('h'),st=$('stage');if(!st.clientWidth)return;
+  const key=h.textContent+'|'+st.clientWidth+'x'+st.clientHeight;if(h._k===key)return;h._k=key;
+  let lo=26,hi=Math.min(st.clientHeight*.86,st.clientWidth*.34,170);
+  const ok=px=>{h.style.fontSize=px+'px';return h.scrollWidth<=st.clientWidth+1&&h.offsetHeight<=st.clientHeight};
+  if(ok(hi))return;
+  for(let i=0;i<9;i++){const m=(lo+hi)/2;if(ok(m))lo=m;else hi=m}
+  h.style.fontSize=lo+'px';
+}
+function render(s){
+  S=s;const[h,why,note]=headline(s);
+  const hh=esc(h).replace(/^([^,]+,)/,'<span class="nb">$1</span>');if($('h')._html!==hh){$('h').innerHTML=hh;$('h')._html=hh}
+  $('why').innerHTML=esc(why)+(note?`<small>${note}</small>`:'');
+  const dv=s.devices.filter(d=>d.id!=='this board').length;
+  const up={tls:', encrypted DNS',plain:', DNS not encrypted',mixed:', DNS partly encrypted'}[s.dns.upstream]||'';
+  $('status').textContent=s.demo?'Demo data':(s.dns.enabled?`${dv} device${dv===1?'':'s'} on ${s.host}${up}`:`${s.host}, DNS off`);
+  const ago=t=>{const a=Math.round(Date.now()/1000-t);return a<60?a+' s':Math.floor(a/60)+' min'};
+  const fitN=Math.max(1,Math.floor($('recent').clientHeight/50));
+  $('recent').innerHTML=s.recent.slice(0,fitN).map(r=>`<li class="${r.blocked?'x':''}"><div>${dom(r.domain)}</div><div><span>${r.blocked?'blocked':esc(r.service==='Other'?'':r.service)}</span><span>${esc(short(r.client))}</span></div></li>`).join('');
+  $('tally').innerHTML=s.dns.total?`<b>${s.dns.blocked}</b> of ${s.dns.total} lookups blocked`:'';
+  fitHeadline();drawWeb();drawTable();
+}
+function size(cv){const r=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*r;cv.height=H*r;const x=cv.getContext('2d');x.setTransform(r,0,0,r,0,0);x.clearRect(0,0,W,H);return[x,W,H]}
+
+function drawWeb(){
+  if(!S)return;const[x,W,H]=size($('web'));
+  const devs=S.devices.filter(d=>d.id!=='this board'),cx=W*.5,cy=H*.46,rx=Math.max(70,W*.30),ry=Math.max(40,H*.22);
+  x.textBaseline='middle';x.textAlign='center';
+  devs.forEach((d,i)=>{
+    const a=devs.length===1?-Math.PI/4:(-Math.PI/2+i*2*Math.PI/devs.length),px=cx+rx*Math.cos(a),py=cy+ry*Math.sin(a),lv=level(d.rate);
+    x.lineCap='round';x.strokeStyle=lv>0?heat(.15+lv*.85):'rgba(14,26,43,.28)';x.lineWidth=2+lv*7;
+    x.beginPath();x.moveTo(cx,cy);x.lineTo(px,py);x.stroke();
+    x.fillStyle=INK;x.beginPath();x.arc(px,py,9+lv*5,0,7);x.fill();
+    const lx=Math.min(Math.max(px,70),W-70),below=py>=cy-4,ty=py+(below?1:-1)*(26+lv*5);
+    x.fillStyle=INK;x.font=`600 15px ${FONT}`;x.fillText(dname(d),lx,ty-(below?0:12));
+    x.fillStyle=INK2;x.font=`400 13px ${FONT}`;x.fillText(`${d.now||'idle'}, ${short(d.id)}`,lx,ty+(below?18:6));
+  });
+  x.fillStyle=INK;x.beginPath();x.arc(cx,cy,13,0,7);x.fill();x.fillStyle=PAPER;x.beginPath();x.arc(cx,cy,4,0,7);x.fill();
+  x.fillStyle=INK;x.font=`600 14px ${FONT}`;x.fillText(S.host,cx,cy+28);
+  if(!devs.length){x.fillStyle=INK2;x.font=`400 14px ${FONT}`;x.fillText('No devices yet. Set a device\u2019s DNS to this board.',cx,cy-36)}
+}
+
+function drawTable(){
+  if(!S)return;const cv=$('c');const[x,W,H]=size(cv);geo=[];
+  const devs=S.devices.slice(0,5),G=W<560?96:150,R=30,L=24,axis=34,hdr=50,gap=12;
+  const rowsN=devs.reduce((a,d)=>a+d.rows.length,0)||1;
+  const avail=H-24-axis-devs.length*(hdr+gap);
+  const rh=Math.max(16,Math.min(60,avail/rowsN-3)); const n=S.devices[0]&&S.devices[0].rows[0]?S.devices[0].rows[0].v.length:120, cw=(W-G-R-L)/n;
+  let y=18,laneTop=1e9,laneBot=0;x.textBaseline='middle';
+  devs.forEach((d,di)=>{
+    x.textAlign='left';x.fillStyle=INK;x.font=`700 20px ${FONT}`;x.fillText(dname(d),L,y+14);
+    x.fillStyle=INK2;x.font=`400 13px ${FONT}`;x.textAlign='right';x.fillText(d.id==='this board'?'this board':`${d.id}  ·  ${d.lookups} lookups`,W-R,y+14);
+    x.strokeStyle='rgba(14,26,43,.4)';x.lineWidth=1;x.beginPath();x.moveTo(L,y+34.5);x.lineTo(W-R,y+34.5);x.stroke();
+    y+=hdr;
+    d.rows.forEach((row,ri)=>{
+      x.textAlign='left';x.fillStyle=INK;x.font=`500 13.5px ${FONT}`;x.fillText(fit(x,row.service,G-10),L,y+rh/2);
+      for(let k=0;k<n;k++){
+        const cx=L+G+k*cw,v=row.line?Math.sqrt(row.v[k]||0):level(row.v[k]);
+        x.fillStyle=WELL;x.fillRect(cx,y,Math.ceil(cw)-.5,rh);
+        if(v>0){x.fillStyle=row.service==='Ads and trackers'?`rgba(14,26,43,${.25+.7*v})`:heat(v);x.fillRect(cx,y,Math.ceil(cw)-.5,rh)}
+      }
+      laneTop=Math.min(laneTop,y);laneBot=Math.max(laneBot,y+rh);geo.push({y,rh,row,d});y+=rh+3;
+    });
+    y+=gap;
+  });
+  x.font=`500 12.5px ${FONT}`;x.fillStyle=INK;const ay=H-12;
+  [['10 minutes ago',0,'left'],['5 minutes',.5,'center'],['now',1,'right']].forEach(([t,f,a])=>{x.textAlign=a;x.fillText(t,L+G+(W-G-R-L)*f,ay)});
+  x.fillRect(L+G+n*cw-1.5,laneTop,2,laneBot-laneTop);
+  cv._g={G,L,cw,n};
+  if(hover){const g=geo.find(o=>hover.y>=o.y&&hover.y<=o.y+o.rh);const k=Math.floor((hover.x-L-G)/cw);
+    if(g&&k>=0&&k<n){const px=L+G+k*cw;x.strokeStyle=INK;x.lineWidth=1.5;x.strokeRect(px-.5,g.y-.5,cw+1,g.rh+1);
+      const ago=Math.round((n-k)*S.step),val=g.row.line?'connection speed':`${Math.round(g.row.v[k])} weighted lookups`;
+      const t=`${dname(g.d)}, ${g.row.service}, ${ago>=60?Math.floor(ago/60)+' min '+(ago%60)+' s':ago+' s'} ago: ${val}`;
+      x.font=`600 13px ${FONT}`;x.textAlign='left';const tw=x.measureText(t).width+16,tx=Math.min(Math.max(8,px-tw/2),W-tw-8),ty=Math.max(4,g.y-30);
+      x.fillStyle=INK;x.fillRect(tx,ty,tw,24);x.fillStyle=PAPER;x.fillText(t,tx+8,ty+12.5)}}
+  x.textAlign='left';
+}
+function fit(x,t,w){while(x.measureText(t).width>w&&t.length>3)t=t.slice(0,-2);return t}
+const cv=$('c');
+cv.addEventListener('mousemove',e=>{const b=cv.getBoundingClientRect();hover={x:e.clientX-b.left,y:e.clientY-b.top};drawTable()});
+cv.addEventListener('mouseleave',()=>{hover=null;drawTable()});
+addEventListener('resize',()=>{if(S)render(S)});
+async function tick(){try{render(await(await fetch('/api/stats')).json())}catch(e){$('status').textContent='Lost contact with the board'}}
+tick();setInterval(tick,1000);
+</script>
+</html>

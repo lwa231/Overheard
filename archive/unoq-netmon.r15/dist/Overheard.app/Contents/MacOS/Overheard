@@ -1,0 +1,17 @@
+#!/bin/bash
+# Overheard launcher. Finds the project, then runs it in a Terminal window (Ctrl+C there stops it).
+HERE="$(cd "$(dirname "$0")/../../.." 2>/dev/null && pwd)"
+for D in "$HERE" "$(cat "$HOME/.overheard-home" 2>/dev/null)" "$HOME/Desktop/ArduinoQ/unoq-netmon"; do
+  [ -n "$D" ] && [ -f "$D/scripts/run.sh" ] && PROJECT="$D" && break
+done
+if [ -z "$PROJECT" ]; then
+  osascript -e 'display alert "Overheard can not find its folder" message "Move Overheard.app back into the unoq-netmon folder, or open it once from there." as critical'
+  exit 1
+fi
+echo "$PROJECT" > "$HOME/.overheard-home"
+osascript <<EOF
+tell application "Terminal"
+  activate
+  do script "cd " & quoted form of "$PROJECT" & " && clear && ./scripts/run.sh"
+end tell
+EOF

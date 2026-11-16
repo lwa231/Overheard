@@ -1,0 +1,17 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.13"]   # the board ships an older Python than the laptop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "${{ matrix.python }}"}
+      - uses: actions/setup-node@v4
+        with: {node-version: "20"}   # tests/test_r16_page.py runs `node --check` on the dashboard scripts
+      - run: node --version          # fail loudly if node is missing instead of letting the page test skip
+      - run: pip install ruff pytest pillow
+      - run: make ci

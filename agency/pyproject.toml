@@ -1,0 +1,18 @@
+[project]
+name = "agency"
+version = "0.2.0"
+description = "Chain-of-command dashboard for an AI agent organisation (v0: simulated tree)"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 200
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP"]
+ignore = ["E701", "E702", "B008", "UP031"]

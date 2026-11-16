@@ -1,0 +1,6 @@
+{
+  "_note": "compaction_limit_tokens: rank key (see agency.json) -> tokens at which an agent compacts its context. Must not increase down the ranks. overrides: agent id -> tokens. context_window_tokens: the real model window per runtime; an effective limit is min(limit, window).",
+  "compaction_limit_tokens": {"head": 500000, "general": 400000, "squad_lead": 300000, "agent": 200000},
+  "overrides": {},
+  "context_window_tokens": {"claude-code": 1000000, "local": 131072}
+}

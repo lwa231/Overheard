@@ -1,0 +1,39 @@
+{
+  "name": "Agency",
+  "departments_dir": "departments",
+  "handoffs_dir": "handoffs",
+  "ranks": [
+    {"key": "head", "label": "Head"},
+    {"key": "general", "label": "General"},
+    {"key": "squad_lead", "label": "Squad Lead"},
+    {"key": "agent", "label": "Agent"}
+  ],
+  "claude_daily_cap_usd": 25,
+  "schedule": {
+    "max_working": 3,
+    "max_loaded": 6,
+    "usage_window_hours": 5,
+    "usage_window_tokens": 1000000,
+    "minutes_per_tick": 5,
+    "departments": {
+      "operations":      {"start": "06:00", "end": "22:00", "share": 40},
+      "implementation":  {"start": "09:00", "end": "17:00", "share": 20},
+      "research":        {"start": "08:00", "end": "14:00", "share": 15},
+      "marketing":       {"start": "14:00", "end": "20:00", "share": 15},
+      "finance-trading": {"start": "13:00", "end": "16:00", "share": 10}
+    }
+  },
+  "gates": {"overtime_fund_usd": 0, "per_job_cap_usd": 0, "max_attempts": 3, "deadline_minutes": 720},
+  "test_mode": {
+    "real_agents": [],
+    "model": "llama3.2:3b",
+    "model_url": "http://127.0.0.1:11434/api/generate",
+    "model_timeout_s": 120,
+    "model_keep_alive": "30m",
+    "model_num_ctx": 4096,
+    "model_num_predict": 512,
+    "price_hosts": ["api.coinbase.com"],
+    "paper_assets": ["BTC-USD"]
+  },
+  "titles": {}
+}

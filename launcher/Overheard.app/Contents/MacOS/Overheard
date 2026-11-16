@@ -1,0 +1,9 @@
+#!/bin/bash
+# One-click dashboard opener. Grabs the auth token over SSH and opens the browser.
+BOARD="arduino@100.69.41.76"
+TOKEN=$(ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new "$BOARD" 'cat ~/netmon/data/token' 2>/dev/null)
+if [ -z "$TOKEN" ]; then
+  osascript -e 'display alert "Overheard" message "Cannot reach the board. Is it powered on and on the same network?" as warning'
+  exit 1
+fi
+open "http://100.69.41.76:8080/?key=$TOKEN"

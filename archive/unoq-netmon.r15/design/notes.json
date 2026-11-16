@@ -1,0 +1,194 @@
+{
+ "classic": {
+  "blurb": "The current look. Near-black cards, one purple accent, heat-colour lanes, big condensed headline.",
+  "refs": "Hostinger cards, Apple Fitness"
+ },
+ "paper": {
+  "blurb": "Editorial newsprint. Cream stock, heavy ink borders, italic serif headline, vermilion accent. Reads like a printed report.",
+  "refs": "Newspaper front pages, Things 3"
+ },
+ "terminal": {
+  "blurb": "Phosphor CRT. Monospace everywhere, square corners, green glow, uppercase headline.",
+  "refs": "Retro CRT UIs, htop"
+ },
+ "brutal": {
+  "blurb": "Neo-brutalism. Yellow page, white cards, thick black outlines and hard offset shadows, hot-pink accent.",
+  "refs": "Gumroad, Figma brutalist kits"
+ },
+ "signal": {
+  "blurb": "Black and red instrument panel. Mono labels, one red signal colour, grey ramp until something spikes.",
+  "refs": "Nothing OS, Teenage Engineering"
+ },
+ "aurora": {
+  "blurb": "Glass over a moving-colour backdrop. Translucent blurred cards, cyan accent, soft light ramp.",
+  "refs": "visionOS, Arc, Raycast"
+ },
+ "mint": {
+  "blurb": "Calm clinical light theme. Mint page, white cards, teal accent, soft shadows.",
+  "refs": "Apple Health, Stripe"
+ },
+ "amber": {
+  "blurb": "Trading-desk amber on black. Dense, square, monospace, everything glows amber.",
+  "refs": "Bloomberg Terminal"
+ },
+ "violet": {
+  "blurb": "Deep purple with large 32px cards and bright lilac accent. Closest to the Hostinger screenshots you liked.",
+  "refs": "Hostinger hPanel"
+ },
+ "lime": {
+  "blurb": "Graphite with acid-lime accent, tight 8px corners. Sporty and sharp.",
+  "refs": "Linear, Vercel Geist"
+ },
+ "sand": {
+  "blurb": "Warm sand and forest green, serif display with sans body. Quiet and premium.",
+  "refs": "Kinfolk, Aesop"
+ },
+ "ice": {
+  "blurb": "Cool light blue, white cards, royal-blue accent with soft blue shadows.",
+  "refs": "Stripe dashboard, Linear light"
+ },
+ "dots": {
+  "blurb": "Nothing-style monochrome: black, white hairlines, mono labels, one red signal. Echoes the LED matrix on the board.",
+  "refs": "Nothing OS, shadcn Nothing guide"
+ },
+ "panel": {
+  "blurb": "Teenage Engineering instrument panel: aluminium grey, square cells with 1px gaps, orange accent, mono type.",
+  "refs": "Teenage Engineering OP-1/EP-133"
+ },
+ "linear": {
+  "blurb": "Calm density: neutral near-black, tiny tight rows, a single restrained violet accent.",
+  "refs": "Linear"
+ },
+ "crt": {
+  "blurb": "CRT phosphor with scanlines and glow, VT323-style type. Louder cousin of Terminal.",
+  "refs": "Retro CRT / vector displays"
+ },
+ "rings": {
+  "blurb": "Pure black with Apple-Fitness neon ramp (cyan, lime, yellow, pink-red) and generous 24px bento cards.",
+  "refs": "Apple Fitness, Apple Health"
+ },
+ "stripe": {
+  "blurb": "Crisp white with indigo accent, layered soft shadows and a pale gradient wash at the top.",
+  "refs": "Stripe Dashboard"
+ },
+ "slate": {
+  "blurb": "Cool blue-grey cards with a single teal accent. Calm and technical.",
+  "refs": "Linear, Vercel dashboards"
+ },
+ "ember": {
+  "blurb": "Charcoal brown with a burnt-orange glow, like coals under ash.",
+  "refs": "Warm night UIs"
+ },
+ "oxide": {
+  "blurb": "Deep green-black with rust accent. Serif headline against clean sans body.",
+  "refs": "Editorial dark mode"
+ },
+ "plum": {
+  "blurb": "Aubergine surfaces and a hot-pink accent with rounded, friendly type.",
+  "refs": "Playful fintech apps"
+ },
+ "cobalt": {
+  "blurb": "Midnight navy and electric cobalt. Crisp blue rules.",
+  "refs": "Bloomberg-style panels"
+ },
+ "graphite": {
+  "blurb": "Pure monochrome. White accent on black, mono type, tiny radii.",
+  "refs": "Teenage Engineering, brutalist docs"
+ },
+ "moss": {
+  "blurb": "Forest floor green with a lime highlight and soft corners.",
+  "refs": "Eco dashboards"
+ },
+ "dusk": {
+  "blurb": "Twilight purple and a warm gold accent.",
+  "refs": "Sunset gradients"
+ },
+ "neon": {
+  "blurb": "Synthwave: black violet with hot magenta outlines and glow.",
+  "refs": "Retro-futurism"
+ },
+ "ocean": {
+  "blurb": "Deep sea teal with sky-blue accent and large soft cards.",
+  "refs": "Weather apps"
+ },
+ "rose": {
+  "blurb": "Blush paper, raspberry accent, Didot-style display type.",
+  "refs": "Fashion editorial"
+ },
+ "citrus": {
+  "blurb": "Sunny yellow page, orange accent, hard offset shadows.",
+  "refs": "Neo-brutalist landing pages"
+ },
+ "sky": {
+  "blurb": "Airy pale blue with big rounded cards.",
+  "refs": "Modern SaaS"
+ },
+ "lavender": {
+  "blurb": "Soft lilac surfaces and a vivid violet accent.",
+  "refs": "Notion-style calm"
+ },
+ "ledger": {
+  "blurb": "Accounting paper: cream, thin ruled lines, blue pen accent, mono.",
+  "refs": "Spreadsheets, bank statements"
+ },
+ "blueprint": {
+  "blurb": "Drafting-table blue with white linework.",
+  "refs": "Architectural plans"
+ },
+ "chalk": {
+  "blurb": "Green chalkboard with off-white chalk strokes.",
+  "refs": "Classroom boards"
+ },
+ "coral": {
+  "blurb": "Warm coral and white, friendly and bright.",
+  "refs": "Consumer apps"
+ },
+ "mono-light": {
+  "blurb": "Black on white, zero radius, no colour except heat lanes.",
+  "refs": "Swiss print, Teenage Engineering"
+ },
+ "olive": {
+  "blurb": "Army-surplus olive and khaki, serif headlines.",
+  "refs": "Field notebooks"
+ },
+ "sunrise": {
+  "blurb": "Peach dawn with a crimson accent.",
+  "refs": "Morning light"
+ },
+ "steel": {
+  "blurb": "Brushed-steel greys with a quiet slate-blue accent.",
+  "refs": "Industrial control panels"
+ },
+ "toxic": {
+  "blurb": "Black with acid-green outlines and heavy type.",
+  "refs": "Hazard signage"
+ },
+ "copper": {
+  "blurb": "Dark walnut and polished-copper accent.",
+  "refs": "Whisky labels"
+ },
+ "glacier": {
+  "blurb": "Cold white-teal with a deep cyan accent.",
+  "refs": "Nordic design"
+ },
+ "candy": {
+  "blurb": "Bubblegum pink, cyan accent, fat borders and pill-round cards.",
+  "refs": "Toy packaging"
+ },
+ "noir": {
+  "blurb": "Film-noir black, bone text, brass accent, hairline rules.",
+  "refs": "Magazine mastheads"
+ },
+ "pixel": {
+  "blurb": "8-bit arcade: heavy borders, zero radius, yellow highlights.",
+  "refs": "Retro games"
+ },
+ "zen": {
+  "blurb": "Quiet off-white, huge radii, one muted amber accent.",
+  "refs": "Japanese minimalism"
+ },
+ "aero": {
+  "blurb": "Frosted-glass cards over a bright sky gradient.",
+  "refs": "Windows Vista, visionOS"
+ }
+}

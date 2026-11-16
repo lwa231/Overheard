@@ -1,0 +1,20 @@
+[project]
+name = "overheard"
+version = "1.0.0"
+description = "DNS ad blocker and network monitor for the Arduino UNO Q"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 240
+# Parked, unrun code (see experimental/README.md): not worth reformatting.
+extend-exclude = ["experimental"]
+src = ["src", "tests", "tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP"]
+ignore = ["E701", "E702", "B008", "UP031"]

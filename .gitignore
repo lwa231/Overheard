@@ -1,0 +1,22 @@
+# secrets and per-board files: never commit
+token
+token.txt
+unlock
+settings.json
+last-*.txt
+*.key
+*.pem
+.env
+# caches and build output
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.DS_Store
+*.egg-info/
+.venv/
+# packaged copies of the folders (large duplicates)
+*.tgz
+_to_delete/
+_repo-stage*

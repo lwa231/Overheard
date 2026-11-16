@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=320">
+<title>Overheard 3DS</title>
+<style>
+/* New Nintendo 3DS browser (NetFront NX, old WebKit): ES5 only, no flexbox/grid/variables/web fonts, absolute pixel layout.
+   LIMITATION: the 3DS browser cannot address the 400x240 top screen separately. This is ONE 320px-wide column: its first
+   240px is the "status screen" (what you see when scrolled to the top) and everything below is the "touch panel". */
+html,body{margin:0;padding:0;background:#0B0E14}
+body{width:320px;font:14px Helvetica,Arial,sans-serif;color:#E9EDF4;overflow-x:hidden}
+#w{position:relative;width:320px;height:560px;overflow:hidden}
+.c{position:absolute;background:#151922;border-radius:12px;overflow:hidden}
+.t{position:absolute;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.k{color:#9aa3b2;font-size:11px}
+.v{color:#E9EDF4;font-size:18px;font-weight:bold}
+.ac{color:#9A8BFF}
+#h{left:10px;top:8px;width:300px;height:34px;font-size:30px;font-weight:bold;line-height:34px}
+#why{left:10px;top:44px;width:300px;height:16px;font-size:12px;color:#9aa3b2}
+.bt{position:absolute;background:#222836;color:#E9EDF4;border-radius:10px;text-align:center;font-weight:bold;cursor:pointer;-webkit-user-select:none}
+.bt.on{background:#9A8BFF;color:#0B0E14}
+.key{width:48px;height:44px;line-height:44px;font-size:20px}
+#msg{left:10px;width:300px;height:20px;font-size:13px;text-align:center}
+.bar{position:absolute;left:0;top:0;height:6px;background:#9A8BFF;border-radius:3px}
+.tr{position:absolute;left:0;width:300px;height:6px;background:#222836;border-radius:3px}
+.row{position:absolute;left:8px;width:284px;height:28px;line-height:28px;font-size:13px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.row.x{color:#9aa3b2}
+</style>
+</head>
+<body>
+<div id="w">
+<!-- STATUS SCREEN: y 0..240 -->
+<div class="t" id="h">Quiet.</div>
+<div class="t" id="why">Protection active</div>
+<div class="c" style="left:10px;top:66px;width:94px;height:46px"><div class="t k" style="left:8px;top:4px;width:80px">Lookups</div><div class="t v" id="n0" style="left:8px;top:18px;width:80px">-</div></div>
+<div class="c" style="left:113px;top:66px;width:94px;height:46px"><div class="t k" style="left:8px;top:4px;width:80px">Blocked</div><div class="t v ac" id="n1" style="left:8px;top:18px;width:80px">-</div></div>
+<div class="c" style="left:216px;top:66px;width:94px;height:46px"><div class="t k" style="left:8px;top:4px;width:80px">Devices</div><div class="t v" id="n2" style="left:8px;top:18px;width:80px">-</div></div>
+<div class="c" style="left:10px;top:120px;width:300px;height:52px">
+  <div class="t k" style="left:10px;top:4px;width:60px">CPU</div><div class="t k" style="left:110px;top:4px;width:60px">Memory</div><div class="t k" style="left:210px;top:4px;width:80px">Temp</div>
+  <div class="t v" id="v0" style="left:10px;top:18px;width:90px">-</div><div class="t v" id="v1" style="left:110px;top:18px;width:90px">-</div><div class="t v" id="v2" style="left:210px;top:18px;width:80px">-</div>
+</div>
+<div class="c" id="dv" style="left:10px;top:180px;width:300px;height:54px"></div>
+<!-- TOUCH PANEL: y 240.. -->
+<div class="t" id="msg" style="top:244px;text-align:center"></div>
+<div id="lk" style="position:absolute;left:0;top:268px;width:320px;height:292px">
+  <div class="c" style="left:10px;top:0;width:300px;height:34px"><div class="t" id="pin" style="left:10px;top:0;width:280px;height:34px;line-height:34px;font-size:22px;letter-spacing:3px">&nbsp;</div></div>
+  <div id="pad"></div>
+</div>
+<div id="ul" style="position:absolute;left:0;top:268px;width:320px;height:292px;display:none">
+  <div id="rc"></div>
+  <div class="bt" id="sl" style="left:10px;top:182px;width:300px;height:48px;line-height:48px;font-size:15px">Slowdown: -</div>
+  <div class="bt" id="lo" style="left:10px;top:238px;width:300px;height:48px;line-height:48px;font-size:15px">Lock</div>
+</div>
+</div>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var typed = "", unlocked = false, busy = false, slow = false, wait = false, pollTimer = null, rowsN = 0;
+
+  function txt(id, s) { var e = $(id); if (e.textContent !== undefined) { e.textContent = s; } else { e.innerHTML = ""; e.appendChild(document.createTextNode(s)); } }
+  function nf(n) { n = Number(n) || 0; return n >= 10000 ? Math.round(n / 1000) + "k" : String(n); }
+  function msg(s, bad) { txt("msg", s); $("msg").style.color = bad ? "#ff8a80" : "#9aa3b2"; }
+
+  function xhr(method, url, body, cb) {
+    var r = new XMLHttpRequest(), done = false;
+    function fin(st, data) { if (done) { return; } done = true; cb(st, data); }
+    try {
+      r.open(method, url, true);
+      try { r.withCredentials = true; } catch (e0) {}
+      if (body !== null) { r.setRequestHeader("Content-Type", "application/json"); }
+      r.onreadystatechange = function () {
+        if (r.readyState !== 4) { return; }
+        var d = null;
+        try { d = JSON.parse(r.responseText); } catch (e1) {}
+        fin(r.status, d);
+      };
+      r.send(body === null ? null : JSON.stringify(body));
+    } catch (e2) { fin(0, null); }
+    setTimeout(function () { if (!done) { try { r.abort(); } catch (e3) {} fin(0, null); } }, 6000);
+  }
+
+  function kb() {
+    var h = "", i, c, x, y, rows = "abcdef ghijkl mnopqr stuvwx yz".split(" ");
+    for (i = 0; i < 26; i++) {
+      c = String.fromCharCode(97 + i); x = 6 + (i % 6) * 52; y = 40 + Math.floor(i / 6) * 48;
+      h += '<div class="bt key" data-k="' + c + '" style="left:' + x + 'px;top:' + y + 'px">' + c + '</div>';
+    }
+    h += '<div class="bt key" data-k="<" style="left:162px;top:232px;width:70px">DEL</div>';
+    h += '<div class="bt key on" data-k="=" style="left:240px;top:232px;width:74px">GO</div>';
+    $("pad").innerHTML = h;
+    $("pad").onclick = function (ev) {
+      var t = ev.target || ev.srcElement, k = t && t.getAttribute ? t.getAttribute("data-k") : null;
+      if (!k) { return; }
+      if (k === "<") { typed = typed.slice(0, -1); } else if (k === "=") { submit(); return; } else if (typed.length < 40) { typed += k; }
+      showPin();
+    };
+  }
+  function showPin() {
+    var s = "", i;
+    for (i = 0; i < typed.length; i++) { s += "*"; }
+    $("pin").innerHTML = s || "&nbsp;";
+  }
+
+  function submit() {
+    if (!typed || busy || wait) { return; }
+    busy = true; msg("Checking...", false);
+    var sec = typed; typed = ""; showPin();
+    xhr("POST", "/api/unlock", { secret: sec }, function (st, d) {
+      busy = false; sec = "";
+      if (st === 200 && d && d.unlocked) { msg("", false); poll(true); }
+      else if (st === 403) { msg("Wrong secret", true); }
+      else if (st === 429) { msg("Too many tries. Wait a bit.", true); wait = true; setTimeout(function () { wait = false; msg("", false); }, 30000); }
+      else if (st === 0) { msg("No connection", true); }
+      else { msg("Error " + st, true); }
+    });
+  }
+
+  function setMode(u) {
+    unlocked = u;
+    $("lk").style.display = u ? "none" : "block";
+    $("ul").style.display = u ? "block" : "none";
+  }
+
+  function render(s) {
+    var dns = s.dns || {}, sy = s.sys || {}, devs = s.devices || [], out = [], i, d, on = !!dns.enabled, h = "";
+    setMode(!!s.unlocked);
+    txt("h", on ? "Quiet." : "Paused.");
+    txt("why", s.unlocked ? (on ? "Protection active - unlocked" : "Protection off") : (on ? "Protection active" : "Protection off"));
+    txt("n0", nf(dns.total)); txt("n1", nf(dns.blocked)); txt("n2", String(dns.clients || 0));
+    txt("v0", sy.cpu !== undefined ? Math.round(sy.cpu) + "%" : "-");
+    txt("v1", sy.mem_total ? Math.round(100 * sy.mem_used / sy.mem_total) + "%" : "-");
+    txt("v2", sy.temp !== undefined && sy.temp !== null ? Math.round(sy.temp) + "°C" : "-");
+    for (i = 0; i < devs.length; i++) { if (devs[i].id !== "this board") { out.push(devs[i]); } }
+    for (i = 0; i < out.length && i < 2; i++) {
+      d = out[i];
+      h += '<div class="t" style="left:10px;top:' + (6 + i * 22) + 'px;width:200px;height:20px;line-height:20px;font-size:13px">' + esc(d.label || d.id) + '</div>' +
+           '<div class="t k" style="left:210px;top:' + (6 + i * 22) + 'px;width:80px;height:20px;line-height:20px;text-align:right">' + nf(d.lookups) + '</div>';
+    }
+    if (!out.length) { h = '<div class="t k" style="left:10px;top:18px;width:280px">No devices yet</div>'; }
+    else if (out.length > 2) { h += '<div class="t k" style="left:10px;top:38px;width:280px;height:14px">+' + (out.length - 2) + ' more</div>'; }
+    $("dv").innerHTML = h;
+    if (s.unlocked) {
+      slow = !!(s.settings && s.settings.slowdown);
+      $("sl").className = "bt" + (slow ? " on" : "");
+      txt("sl", "Slowdown: " + (slow ? "ON" : "off") + " (tap)");
+      var rc = s.recent || [], r = "", n = Math.min(rc.length, 6);
+      for (i = 0; i < n; i++) { r += '<div class="row' + (rc[i].blocked ? " x" : "") + '" style="top:' + (i * 28) + 'px">' + (rc[i].blocked ? "x " : "") + esc(rc[i].domain || "") + '</div>'; }
+      $("rc").innerHTML = r || '<div class="row x" style="top:0">Nothing yet.</div>';
+    }
+  }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+  var polling = false;
+  function poll(now) {
+    if (polling) { return; }
+    polling = true;
+    xhr("GET", "/api/stats", null, function (st, d) {
+      polling = false;
+      if (st === 200 && d) { render(d); if ($("msg").textContent === "Offline") { msg("", false); } }
+      else if (st === 401) { msg("Locked. Reopen with the access link.", true); }
+      else { msg("Offline", true); }
+    });
+  }
+  function loop() { poll(); pollTimer = setTimeout(loop, 5000); }
+
+  $("sl").onclick = function () {
+    xhr("POST", "/api/settings", { slowdown: !slow }, function (st, d) {
+      if (st === 200 && d && d.settings) { slow = !!d.settings.slowdown; poll(); }
+      else if (st === 403) { msg("Locked", true); poll(); }
+      else { msg("Could not change", true); }
+    });
+  };
+  $("lo").onclick = function () {
+    xhr("POST", "/api/lock", {}, function () { typed = ""; showPin(); msg("", false); setMode(false); poll(); });
+  };
+
+  kb();
+  loop();
+}());
+</script>
+</body>
+</html>
