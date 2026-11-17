@@ -2,6 +2,7 @@
 # Links the boards so each dashboard can show the others (a read-only, locked summary).
 # For every sites/<name>.conf (not the *.example templates): reads that board's access key over SSH, then writes
 # ~/netmon/data/peers.json (mode 600) on every board listing all the OTHER boards, and restarts the service.
+# It first prints one line per site: "<site> -> board hostname <hostname>", and writes only after you type yes (or LINK_SITES_YES=1 when there is no terminal).
 # Reading is all or nothing: if any board cannot be read, nothing is written to any board.
 # Writing is NOT atomic (separate SSH sessions): if a write fails part-way, it stops, exits non-zero and last-link-sites.txt says
 # exactly which boards were written ("ok") and which were not ("not written"); the boards that say ok keep their new list.
@@ -10,7 +11,7 @@
 # Run from the project folder:  bash scripts/link_sites.sh
 cd "$(dirname "$0")/.." || exit 1
 OUTDIR="$HOME/Desktop/ArduinoQ"; OUT="$OUTDIR/last-link-sites.txt"
-NAMES=(); USERS=(); HOSTS=(); KEYS=(); RES=()
+NAMES=(); USERS=(); HOSTS=(); KEYS=(); RES=(); HNS=()
 for f in sites/*.conf; do [ -f "$f" ] && NAMES+=("$(basename "$f" .conf)"); done
 if [ "${#NAMES[@]}" -lt 2 ]; then
   echo "Linking needs at least two sites: one file per board in sites/ (sites/home.conf and sites/apartment.conf)."
@@ -31,7 +32,13 @@ for i in "${!NAMES[@]}"; do
   USERS[$i]="${line%% *}"; HOSTS[$i]="${line#* }"
   tsip "${HOSTS[$i]}" || { RES[$i]="skipped (BOARD_HOST in sites/$n.conf is not a Tailscale address: use the board's Tailscale address, 100.64.0.0 to 100.127.255.255)"; continue; }
   case "${USERS[$i]}" in ""|*[!a-zA-Z0-9._-]*) RES[$i]="skipped (BOARD_USER in sites/$n.conf is not usable)"; continue;; esac
-  KEYS[$i]="$(ssh -o BatchMode=yes $O "${USERS[$i]}@${HOSTS[$i]}" 'cat ~/netmon/data/token' 2>/dev/null)"
+  # one SSH call: line 1 is the board's own hostname (shown to you before anything is written), line 2 its access key
+  got="$(ssh -o BatchMode=yes $O "${USERS[$i]}@${HOSTS[$i]}" 'hostname; cat ~/netmon/data/token' 2>/dev/null)"
+  HNS[$i]="${got%%$'
+'*}"; KEYS[$i]=""; case "$got" in *$'
+'*) KEYS[$i]="${got#*$'
+'}";; esac
+  case "${HNS[$i]}" in ""|*[!A-Za-z0-9._-]*) HNS[$i]="(unreadable)";; esac
   case "${KEYS[$i]}" in *[!A-Za-z0-9_-]*) KEYS[$i]="";; esac
   [ "${#KEYS[$i]}" -ge 8 ] || { KEYS[$i]=""; RES[$i]="failed (cannot read the access key over SSH)"; }
 done
@@ -42,6 +49,20 @@ if [ "$BAD" = 1 ]; then
   KEYS=()
   mkdir -p "$OUTDIR"
   { date; for i in "${!NAMES[@]}"; do echo "${NAMES[$i]}: ${RES[$i]}"; done; echo "Nothing was written to any board. Fix the site(s) above, then run this again."; } | tee "$OUT"
+  exit 1
+fi
+# 2b. show which board each site name really reached, and write nothing unless the owner confirms
+IDENT=""; for i in "${!NAMES[@]}"; do IDENT="$IDENT${NAMES[$i]} -> board hostname ${HNS[$i]}"$'
+'; done
+mkdir -p "$OUTDIR"
+printf '%s' "$IDENT" > "$OUT"
+printf '%s' "$IDENT"
+echo "Each line is a site (its sites/<name>.conf) and the board that answered at that address. A site name is what the other dashboards will call that board."
+ANS=no
+if [ "${LINK_SITES_YES:-}" = 1 ]; then ANS=yes
+elif [ -t 0 ]; then read -r -p "Is this right? type yes: " ANS; fi
+if [ "$ANS" != yes ]; then
+  KEYS=(); echo "Aborted: nothing was written to any board. Fix sites/<name>.conf (BOARD_HOST), then run this again." | tee -a "$OUT"
   exit 1
 fi
 # 3. each board gets the list of all the others, then restarts
@@ -64,7 +85,7 @@ for i in "${!NAMES[@]}"; do
 done
 J=""; KEYS=()
 mkdir -p "$OUTDIR"
-{ date; for i in "${!NAMES[@]}"; do echo "${NAMES[$i]}: ${RES[$i]}"; done
+{ date; printf '%s' "$IDENT"; for i in "${!NAMES[@]}"; do echo "${NAMES[$i]}: ${RES[$i]}"; done
   [ "$STOP" = 1 ] && echo "Stopped part-way: boards marked ok already have the new list, the others were left as they were. Fix the failing board, then run this again."; } | tee "$OUT"
 echo
 echo "Saved to $OUT. Open a board's dashboard: the site buttons appear at the top."

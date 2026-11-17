@@ -538,14 +538,15 @@ for a in "$@"; do case "$a" in *@*) host="${a#*@}";; esac; done
 cmd="${@: -1}"
 case "$FAKE_DOWN" in *" $host "*) exit 255;; esac
 case "$cmd" in
-  "cat ~/netmon/data/token") printf 'tok_%s_padpad' "${host//./_}";;
+  "hostname; cat ~/netmon/data/token") printf 'box-%s
+tok_%s_padpad' "${host//./_}" "${host//./_}";;
   "umask 077"*) case "$FAKE_WFAIL" in *" $host "*) exit 1;; esac; cat > "$FAKE_OUT/$host.json";;
   "sudo systemctl restart overheard.service") touch "$FAKE_OUT/$host.restart";;
 esac
 """
 
 
-def link_run(tmp_path, hosts, down="", wfail=""):
+def link_run(tmp_path, hosts, down="", wfail="", yes=True):
     """Runs scripts/link_sites.sh in a scratch project with one site per entry of `hosts` and a stub ssh on PATH."""
     root, out, fb = tmp_path / "proj", tmp_path / "out", tmp_path / "bin"
     for d in (root / "scripts", root / "sites", out, fb):
@@ -559,7 +560,9 @@ def link_run(tmp_path, hosts, down="", wfail=""):
     (fb / "ssh").write_bytes(STUB.encode())
     os.chmod(fb / "ssh", 0o755)
     env = dict(os.environ, HOME=tmp_path.as_posix(), PATH=fb.as_posix() + os.pathsep + os.environ["PATH"], FAKE_OUT=out.as_posix(), FAKE_DOWN=down, FAKE_WFAIL=wfail)
-    r = subprocess.run(["bash", (root / "scripts" / "link_sites.sh").as_posix()], cwd=root, env=env, capture_output=True, text=True, timeout=60)
+    if yes:
+        env["LINK_SITES_YES"] = "1"      # no terminal here: without this the script refuses to write
+    r = subprocess.run(["bash", (root / "scripts" / "link_sites.sh").as_posix()], cwd=root, env=env, capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL)
     result = tmp_path / "Desktop" / "ArduinoQ" / "last-link-sites.txt"
     return r, out, result.read_text() if result.exists() else ""
 
@@ -609,3 +612,22 @@ def test_link_sites_reports_exactly_which_boards_were_written_when_a_later_write
     assert r.returncode == 1
     assert "apartment: ok" in result and "cabin: failed (cannot write" in result and "home: not written" in result and "Stopped part-way" in result
     assert (out / "100.64.0.1.json").exists() and not (out / "100.64.0.3.json").exists() and not (out / "100.64.0.2.json").exists()
+
+
+@needs_bash
+def test_each_board_is_written_its_own_conf_name_and_only_the_other_as_peer(tmp_path):
+    """Names follow the conf file of the address reached, never the loop order: the board at .1 is "apartment" and lists only "home" (at .2), and the reverse."""
+    r, out, result = link_run(tmp_path, {"home": "100.64.0.2", "apartment": "100.64.0.1"})
+    assert r.returncode == 0, r.stdout + r.stderr
+    a, h = (json.loads((out / x).read_text()) for x in ("100.64.0.1.json", "100.64.0.2.json"))
+    assert a["site"] == "apartment" and [(p["name"], p["url"]) for p in a["peers"]] == [("home", "http://100.64.0.2:8080")]
+    assert h["site"] == "home" and [(p["name"], p["url"]) for p in h["peers"]] == [("apartment", "http://100.64.0.1:8080")]
+    assert "apartment -> board hostname box-100_64_0_1" in result and "home -> board hostname box-100_64_0_2" in result
+    assert result.index("apartment -> board hostname") < result.index("apartment: ok")      # the identity lines come first
+
+
+@needs_bash
+def test_link_sites_writes_nothing_without_a_yes(tmp_path):
+    r, out, result = link_run(tmp_path, {"apartment": "100.64.0.1", "home": "100.64.0.2"}, yes=False)
+    assert r.returncode == 1 and not list(out.iterdir())
+    assert "apartment -> board hostname box-100_64_0_1" in result and "Aborted: nothing was written" in result and "tok_" not in r.stdout + result

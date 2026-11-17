@@ -10,6 +10,12 @@ Goal: a DNS board at home (own router and modem, so the board can be the network
 - API: `GET /api/sites` (names and state, never addresses or keys), `GET /api/site?name=home` (that board's locked stats, 502 `site unreachable` when it is down). Both sit behind the access key.
 - Dashboard: with more than one site, pills at the top switch the view; a banner says it is a summary and unlock, settings, LED and profile controls are hidden while viewing another board.
 - Owner tool: `Link Sites.command` (Mac) reads each board's key over SSH and writes `peers.json` on every board listing the others, then restarts the service. Needs two or more `sites/*.conf`, each with the board's Tailscale address as BOARD_HOST. Reading is all or nothing: if any board cannot be read, nothing is written to any board. Writing is **not** atomic (one SSH session per board): if a write fails part-way it stops and exits non-zero, and `last-link-sites.txt` lists which boards were written (`ok`) and which were `not written`; the written ones keep their new list. Keys are never shown or saved on the Mac. Result: `~/Desktop/ArduinoQ/last-link-sites.txt`. Re-run it after a board's key changes.
+- Before writing, it prints one line per site, `<site> -> board hostname <hostname>`, and asks `Is this right? type yes`; anything else aborts with nothing written (no terminal: set `LINK_SITES_YES=1`). If a hostname is not the board you meant, fix `BOARD_HOST` in that `sites/<name>.conf`.
+
+## Linking: once, and what the names mean
+- Run Link Sites once: each board reads `<data_dir>/peers.json` every time Overheard starts, so the link survives restarts and reboots. Re-run it only when a board's address or access key changes, or you add a site.
+- To undo linking on a board: delete `~/netmon/data/peers.json` there and restart the service.
+- The name shown is the conf file name of the board you linked (`sites/<name>.conf`); "this board" is the one whose dashboard you opened. If the names look swapped, a conf file points at the other board's address.
 
 ## Not built
 - Each board keeps its own database and decisions; nothing is merged.

@@ -1202,7 +1202,7 @@ function drawSites(){
   const nav=$('sites');nav.hidden=SITES.length<2;nav.textContent='';if(nav.hidden)return;
   SITES.forEach(x=>{const b=document.createElement('button'),l=document.createElement('span');
     b.type='button';b.className='btn chip';b.dataset.s=x.self?'':x.name;b.setAttribute('aria-pressed',String(x.self?!SITE:x.name===SITE));
-    l.className='lamp';b.append(l,x.name+(x.ok===false?' (offline)':''));nav.append(b)})}
+    l.className='lamp';b.append(l,x.name+(x.self?' (this board)':'')+(x.ok===false?' (offline)':''));nav.append(b)})}
 async function loadSites(){
   try{const r=await fetch('/api/sites',{signal:AbortSignal.timeout(4000),credentials:'same-origin'});if(!r.ok)throw r.status;SITES=(await r.json()).sites||[]}catch(e){return}
   if(SITE&&!SITES.some(x=>x.name===SITE&&!x.self)){SITE=null;siteView()}
